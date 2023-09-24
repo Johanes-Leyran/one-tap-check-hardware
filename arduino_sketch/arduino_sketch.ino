@@ -1,10 +1,11 @@
-String inputString = ""; //Receiving Input
-bool stringComplete = false; //Receiving Input   
+String inputString = ""; //Receiving Input from code
+bool stringComplete = false; //Receiving Input from code
 
 const int testPinOutput = 10; //Testing
 const int testPinInput = 4; //Testing
 
-const int globalDelay = 500; //if you're going to do delay(), put this in
+unsigned long lastRan = 0; //Input from arduino
+const int globalDelay = 500; //The delay in ms. DO NOT USE DELAY METHOD, INCORPORATE THIS INSTEAD
 
 /**
  * Ran once on startup
@@ -25,11 +26,15 @@ void loop() {
     inputString = "";
     stringComplete = false;
   }
-  
-  //Example of input
-  if (digitalRead(testPinInput) == HIGH){
-    sendMessage("Pressed");
-    delay(globalDelay);
+
+  //Input code from arduino to code (Will only be used for RFID -> Code)
+  if ((millis() - lastRan) > globalDelay) {
+
+    if (digitalRead(testPinInput) == HIGH) sendMessage("Pressed");
+    //else if {add here}
+    else return; // Return early if no valid input detected
+
+   lastRan = millis();
   }
 }
 
