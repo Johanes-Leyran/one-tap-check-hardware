@@ -1,0 +1,5 @@
+{
+  "name": "OneTapCheck",
+  "description": "A library for STI's OneTapCheck System.",
+  "frameworks": "arduino"
+}
