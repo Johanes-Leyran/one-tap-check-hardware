@@ -1,11 +1,13 @@
 package sti.itmawd.otc.functions;
 
+import com.fazecast.jSerialComm.SerialPort;
 import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 
 public class Api {
     public enum Purpose {
@@ -14,22 +16,26 @@ public class Api {
 
 
 
-    public static HttpResponse<String> sendTap(String room, String user, Purpose purpose) {
+    public static HttpResponse<String> sendTap(SerialPort port, String user, Purpose purpose) {
         try {
             JSONObject sendJson = new JSONObject();
-            sendJson.put("room_uuid", room);
-            sendJson.put("user_uuid", user);
+            sendJson.put("scanner_id", Tracking.getRoom(port));
+            sendJson.put("tag_id", user);
+            sendJson.put("time", Instant.now().getEpochSecond());
             sendJson.put("purpose", purpose.toString());
+            if (purpose.equals(Purpose.ATTEND_SESSION)){
+                sendJson.put("attendance_id", Tracking.getAttendance(port));
+            }
 
             HttpClient httpClient = HttpClient.newBuilder()
                     .followRedirects(HttpClient.Redirect.ALWAYS)
                     .build();
 
-            //todo fix
+
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://group2research.pythonanywhere.com/rfid-api/tap-in/"))
+                    .uri(URI.create("http://leyranmoment.pythonanywhere.com/one_tap_api/attendance/create"))
                     .header("Content-Type", "application/json")
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(sendJson.toString()))
+                    .POST(HttpRequest.BodyPublishers.ofString(sendJson.toString()))
                     .build();
 
             return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

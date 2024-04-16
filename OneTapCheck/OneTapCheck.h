@@ -26,7 +26,6 @@ public:
 	bool writeDataToCard(String data);
 
 	void playAlert(bool success);
-	String* splitString(const String& str, char regex);
 
 
 private:

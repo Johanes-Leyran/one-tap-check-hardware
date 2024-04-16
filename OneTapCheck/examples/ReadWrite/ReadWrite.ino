@@ -38,10 +38,10 @@ void serialEvent() {
 
   /* Assigning data (Must be 36 characters long!) */
   if (str.startsWith("data ")) {
-    String uuid = str.substring(5, 41);
+    String uuid = str.substring(5, 44);
 
-    if (!otc.isUUID(uuid)) {
-      otc.sendMessage("Write: Data was not set. " + uuid); 
+    if (uuid.length() != 39) {
+      otc.sendMessage("Write: Data was not set. " + uuid.length()); 
       return;
     }
 

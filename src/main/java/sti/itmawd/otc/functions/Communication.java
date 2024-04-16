@@ -8,7 +8,11 @@ import org.json.JSONObject;
 import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+
+import static sti.itmawd.otc.functions.Api.sendTap;
 
 public class Communication {
     enum FromArduino{
@@ -17,59 +21,77 @@ public class Communication {
         public static void process(SerialPort port, String message){
             String[] command = message.split(" ");
 
-            if (Objects.equals(command[1], FromArduino.SETUP.toString().toLowerCase())){
+            if (Objects.equals(command[0], FromArduino.SETUP.toString().toLowerCase())){
                 ToArduino.sendToArduino(port, ToArduino.ACTIVATE, "true");
                 sendTime(port);
                 Tracking.setRoom(port, message.substring(6));
             }
 
-            else if (Objects.equals(command[1], FromArduino.TAP.toString().toLowerCase())){
+            else if (Objects.equals(command[0], FromArduino.TAP.toString().toLowerCase())){
                 //TODO tap nameHere/Failed to Tap./false || tap nameHere/Successful tap/true
                 String roomUID = command[1];
+                if (!roomUID.equals(Tracking.getRoom(port))) throw new RuntimeException(); //TODO
                 String userUID = command[2];
                 Api.Purpose purpose;
 
                 if (!Tracking.isRoomUsed(port)) { //CREATE
                     purpose = Api.Purpose.CREATE_SESSION;
-                    HttpResponse<String> response = Api.sendTap(roomUID, userUID, purpose);
 
+                    HttpResponse<String> response = sendTap(port, userUID, purpose);
                     if (response == null){
-                        ToArduino.sendToArduino(port, ToArduino.TAP, null); //TODO
+                        ToArduino.sendToArduino(port, ToArduino.TAP, " /Connection Issue/false");
                         return;
                     }
 
-                    JSONObject obj = new JSONObject(response.body());
-                    //TODO
+                    JSONObject jsonObject = new JSONObject(response.body());
 
+                    if (jsonObject.has("error")){
+                        ToArduino.sendToArduino(port, ToArduino.TAP, " /" + jsonObject.getString("error") + "/false");
+                        return;
+                    }
+
+                    ToArduino.sendToArduino(port, ToArduino.TAP, jsonObject.getString("Teacher Name") + "/" + jsonObject.getString("Message") + "/true");
+                    ToArduino.sendToArduino(port, ToArduino.LCD, "1 T. " + jsonObject.getString("Teacher Name"));
+                    Tracking.setAttendance(port, jsonObject.getString("Attendance ID"));
                 } else {
-                    if (Tracking.getStaff(port).equals(userUID)){ //END
+                    if (Tracking.getStaff(port).equals(userUID)) { //END SESSION
                         purpose = Api.Purpose.END_SESSION;
-                        HttpResponse<String> response = Api.sendTap(roomUID, userUID, purpose);
 
-                        if (response == null){
+                        HttpResponse<String> response = sendTap(port, userUID, purpose);
+
+                        if (response == null) {
                             ToArduino.sendToArduino(port, ToArduino.TAP, "tap nameTest/Connection Issue/false");
                             return;
                         }
 
-                        JSONObject obj = new JSONObject(response.body());
+                        JSONObject jsonObject = new JSONObject(response.body());
+
+                        if (jsonObject.has("error")){
+                            ToArduino.sendToArduino(port, ToArduino.TAP, " /" + jsonObject.getString("error") + "/false");
+                            return;
+                        }
+
+                        ToArduino.sendToArduino(port, ToArduino.LCD, "1 Available");
+
                     } else { //ATTEND
                         purpose = Api.Purpose.ATTEND_SESSION;
-                        HttpResponse<String> response = Api.sendTap(roomUID, userUID, purpose);
+                        HttpResponse<String> response = sendTap(port, userUID, purpose);
 
-                        if (response == null){
+                        if (response == null) {
                             ToArduino.sendToArduino(port, ToArduino.TAP, "tap nameTest/Connection Issue/false");
                             return;
                         }
+
+                        JSONObject jsonObject = new JSONObject(response.body());
+
+                        if (jsonObject.has("error")){
+                            ToArduino.sendToArduino(port, ToArduino.TAP, " /" + jsonObject.getString("error") + "/false");
+                            return;
+                        }
+
+                        ToArduino.sendToArduino(port, ToArduino.TAP, jsonObject.getString("Last Name") + "/" + jsonObject.getString("Message") + "/true");
                     }
                 }
-                //JSONObject obj = new JSONObject(response.body());
-
-                //Todo: display thing, idk what leyran is cooking
-                //sendMessage(port, "tap "
-                //        + status + " "
-                //        + response.statusCode() + " "
-                //        + obj.getString(code).replace(" ", "_").substring(0, 19)
-                //        + " hello");
             }
 
         }

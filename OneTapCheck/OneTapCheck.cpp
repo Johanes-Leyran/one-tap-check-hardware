@@ -79,7 +79,7 @@ void OneTapCheck::stopCardCheck() {
 }
 
 bool OneTapCheck::isUUID(const String& str) {
-    return str[8] == '-' && str[13] == '-'&& str[18] == '-'&& str[23] == '-';
+    return str.length() == 39;
 }
 
 /*
@@ -113,12 +113,12 @@ String OneTapCheck::readDataFromCard() {
     if (readOne[0] == '\0' || readTwo[0] == '\0' || readThree[0] == '\0') return "";
 
     String finalString = "";
-    for (int i = 0; i < 36; i++) {
+    for (int i = 0; i < 39; i++) {
         if (i < 16) {
             finalString += (char) readOne[i];
         } else if (i < 32) {
             finalString += (char) readTwo[i - 16];
-        } else if (i < 36) {
+        } else if (i < 39) {
             finalString += (char) readThree[i - 32];
         }
     }
@@ -142,7 +142,7 @@ bool OneTapCheck::writeDataToCard(String data) {
         else if (i < 32) {
             dataTwo[i - 16] = data.charAt(i);
         }
-        else if (i < 36) {
+        else if (i < 39) {
             dataThree[i - 32] = data.charAt(i);
         }
     }
@@ -176,28 +176,8 @@ bool OneTapCheck::writeDataToCard(String data) {
 void OneTapCheck::playAlert(bool success) {
     if (success) {
         tone(8, 784, 250);
-        delay(1000);
     }
     else {
         tone(8, 349, 1000);
-        delay(1000);
     }
 }
-
-String* OneTapCheck::splitString(const String& str, char regex) {
-    String* result;
-    String current = "";
-    int length = 0;
-
-    for (char c : str) {
-        if (c == regex) {
-            result[length++] = current;
-            current = "";
-        } else {
-            current += c;
-        }
-    }
-
-    return result;
-}
-

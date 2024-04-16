@@ -31,7 +31,7 @@ void loop() {
     //INSTRUCTIONS FOR DISPLAYING NULL/Invalid
     otc.print(3, "Invalid Card!");
     otc.playAlert(false);
-    delay(1000);
+    delay(2000);
     otc.clear(3);
   } else {
     otc.sendMessage("tap " + String(ROOM_UID) + " " + String(data));
@@ -68,6 +68,7 @@ void processString(const String& inputString){
 
     if (command.startsWith("0 ") || command.startsWith("1 ") || command.startsWith("2 ") || command.startsWith("3 ")) {
         int place = command[0] - '0';
+        otc.clear(place); 
         otc.print(place, command.substring(2));
     }
   }
@@ -78,6 +79,7 @@ void processString(const String& inputString){
     if (command.startsWith("true")){
       hasActivated = true;
       otc.clear();
+      otc.print(1, "Available");
     } else if (command.startsWith("false")){
       hasActivated = false;
       otc.clear();
@@ -87,13 +89,29 @@ void processString(const String& inputString){
   }
 
   if (inputString.startsWith("tap ")) {
-    const String* command = otc.splitString(inputString.substring(4), '/');
+    String command[3];
+    String current = "";
+    int index = 0;
 
+    for (char c : inputString.substring(4)) {
+      if (c == '/') {
+        command[index++] = current;
+        otc.sendMessage(current);
+        current = "";
+      } else {
+        current += c;
+      }
+    }
+
+    command[index++] = current;
+    otc.sendMessage(current);
+
+    otc.clear(2); otc.clear(3);
     otc.print(2, command[0]);
     otc.print(3, command[1]);
     otc.playAlert(command[2].startsWith("true"));
 
-    delay(1000);
+    delay(2000);
     otc.clear(2); 
     otc.clear(3); 
 
@@ -101,6 +119,7 @@ void processString(const String& inputString){
   }
 
   if (inputString.startsWith("setup")){
+    delay(1000);
     otc.sendMessage(String("setup ") + ROOM_UID);
   }
 

@@ -43,6 +43,7 @@ public class Connection implements SerialPortDataListener {
 
                     port.addDataListener(this);
                     Tracking.addArduino(port);
+                    try { Thread.sleep(2000); } catch(InterruptedException e){}
                     Communication.ToArduino.sendToArduino(port, Communication.ToArduino.SETUP, null);
                     System.out.println("Connected to " + port);
                 }
@@ -93,6 +94,7 @@ public class Connection implements SerialPortDataListener {
         String message = buffer.substring(startIndex + 1, endIndex).trim();
         buffer.delete(0, endIndex + 1);
 
+        System.out.println(message);
         Communication.FromArduino.process(port, message);
     }
 
