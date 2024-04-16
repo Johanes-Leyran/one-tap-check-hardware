@@ -17,9 +17,7 @@ void OneTapCheck::setup() {
 	lcd.backlight();
     SPI.begin();
     mfrc522.PCD_Init();
-    pinMode(5, OUTPUT);
-    pinMode(6, OUTPUT);
-    pinMode(7, OUTPUT);
+    pinMode(8, OUTPUT);
     print(1, "  STI  OneTapCheck  ");
     print(2, "   System Offline   ");
 }
@@ -80,53 +78,93 @@ void OneTapCheck::stopCardCheck() {
     mfrc522.PCD_StopCrypto1();
 }
 
+bool OneTapCheck::isUUID(const String& str) {
+    return str[8] == '-' && str[13] == '-'&& str[18] == '-'&& str[23] == '-';
+}
+
 /*
  * Reads the data from card
  * This will only return the data written to card using writeDataToCard()
  * Returns the string from card
  */
 String OneTapCheck::readDataFromCard() {
+    int blockOne = 1, blockTwo = 5, blockThree = 9, bufferSize = 28;
 
-    byte bufferLen = 26;
-    byte readBlockData[26];
-    byte status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 2, &key, &(mfrc522.uid));
+    byte readOne[bufferSize];
+    byte readTwo[bufferSize];
+    byte readThree[bufferSize];
 
-    if (status != MFRC522::STATUS_OK) return "null";
+    MFRC522::StatusCode status;
+    status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockOne, &key, &(mfrc522.uid));
+    if (status != MFRC522::STATUS_OK) { sendMessage("1"); return ""; }
+    status = mfrc522.MIFARE_Read(blockOne, readOne, (byte) bufferSize);
+    if (status != MFRC522::STATUS_OK) { sendMessage(mfrc522.GetStatusCodeName(status)); return ""; }
 
+    status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockTwo, &key, &(mfrc522.uid));
+    if (status != MFRC522::STATUS_OK) { sendMessage("3"); return ""; }
+    status = mfrc522.MIFARE_Read(blockTwo, readTwo, (byte) bufferSize);
+    if (status != MFRC522::STATUS_OK) { sendMessage("4"); return ""; }
 
-    status = mfrc522.MIFARE_Read(2, readBlockData, &bufferLen);
-    if (status != MFRC522::STATUS_OK) return "null";
+    status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockThree, &key, &(mfrc522.uid));
+    if (status != MFRC522::STATUS_OK) { sendMessage("5"); return ""; }
+    status = mfrc522.MIFARE_Read(blockThree, readThree, (byte) bufferSize);
+    if (status != MFRC522::STATUS_OK) { sendMessage("6"); return ""; }
 
+    if (readOne[0] == '\0' || readTwo[0] == '\0' || readThree[0] == '\0') return "";
 
-    char str[(sizeof readBlockData) + 1];
-    memcpy(str, readBlockData, sizeof readBlockData);
-    str[sizeof readBlockData] = 0;
+    String finalString = "";
+    for (int i = 0; i < 36; i++) {
+        if (i < 16) {
+            finalString += (char) readOne[i];
+        } else if (i < 32) {
+            finalString += (char) readTwo[i - 16];
+        } else if (i < 36) {
+            finalString += (char) readThree[i - 32];
+        }
+    }
 
-    if (str[0] == '\0') return "null";
-    return str;
+    return finalString;
 }
 
 /*
- * Writes the string given to the next card that is detected
- */
-void OneTapCheck::writeDataToCard(byte blockData[]) {
+*Writes the string given to the next card that is detected
+*/
+bool OneTapCheck::writeDataToCard(String data) {
+    int blockOne = 1, blockTwo = 5, blockThree = 9;
+    byte dataOne[16];
+    byte dataTwo[16];
+    byte dataThree[16] = {"                "};
+
+    for (int i = 0; i < data.length(); i++) {
+        if (i < 16) {
+            dataOne[i] = data.charAt(i);
+        }
+        else if (i < 32) {
+            dataTwo[i - 16] = data.charAt(i);
+        }
+        else if (i < 36) {
+            dataThree[i - 32] = data.charAt(i);
+        }
+    }
+
     MFRC522::StatusCode status;
+    status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockOne, &key, &(mfrc522.uid));
+    if (status != MFRC522::STATUS_OK) { sendMessage("Auth 1 Fail"); return false; }
+    status = mfrc522.MIFARE_Write(blockOne, dataOne, 16);
+    if (status != MFRC522::STATUS_OK) { sendMessage("Assign 1 Fail"); return false; }
 
-    status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 2, &key, &(mfrc522.uid));
-    if (status != MFRC522::STATUS_OK) {
-        sendMessage("Write: Failed to authenticate");
-        sendMessage(mfrc522.GetStatusCodeName(status));
-        return;
-    }
+    status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockTwo, &key, &(mfrc522.uid));
+    if (status != MFRC522::STATUS_OK) { sendMessage("Auth 2 Fail"); return false; }
+    status = mfrc522.MIFARE_Write(blockTwo, dataTwo, 16);
+    if (status != MFRC522::STATUS_OK) { sendMessage("Assign 2 Fail"); return false; }
 
-    status = mfrc522.MIFARE_Write(2, blockData, 16);
-    if (status != MFRC522::STATUS_OK) {
-        sendMessage("Write: Failed to write data");
-        sendMessage(mfrc522.GetStatusCodeName(status));
-        return;
-    } else {
-        sendMessage("Write: Data written successfully");
-    }
+    status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockThree, &key, &(mfrc522.uid));
+    if (status != MFRC522::STATUS_OK) { sendMessage("Auth 3 Fail"); return false; }
+    status = mfrc522.MIFARE_Write(blockThree, dataThree, 16);
+    if (status != MFRC522::STATUS_OK) { sendMessage("Assign 3 Fail"); return false; }
+
+    sendMessage("Write: Successfully written data!");
+    return true;
 }
 
 /*
@@ -137,16 +175,29 @@ void OneTapCheck::writeDataToCard(byte blockData[]) {
  */
 void OneTapCheck::playAlert(bool success) {
     if (success) {
-        digitalWrite(5, HIGH);
-        tone(7, 784, 250);
+        tone(8, 784, 250);
         delay(1000);
-        digitalWrite(5, LOW);
     }
     else {
-        digitalWrite(6, HIGH);
-        tone(7, 349, 1000);
+        tone(8, 349, 1000);
         delay(1000);
-        digitalWrite(6, LOW);
     }
+}
+
+String* OneTapCheck::splitString(const String& str, char regex) {
+    String* result;
+    String current = "";
+    int length = 0;
+
+    for (char c : str) {
+        if (c == regex) {
+            result[length++] = current;
+            current = "";
+        } else {
+            current += c;
+        }
+    }
+
+    return result;
 }
 

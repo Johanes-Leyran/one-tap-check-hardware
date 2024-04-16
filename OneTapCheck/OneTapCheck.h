@@ -21,10 +21,12 @@ public:
 	void renewKey();
 	bool checkForCard();
 	void stopCardCheck();
+	bool isUUID(const String& str);
 	String readDataFromCard();
-	void writeDataToCard(byte blockData[]);
+	bool writeDataToCard(String data);
 
 	void playAlert(bool success);
+	String* splitString(const String& str, char regex);
 
 
 private:

@@ -1,166 +1,73 @@
-/*
- * ONE TAP CHECK: RFID CLASSROOM ATTENDANCE MANAGEMENT SYSTEM FOR SENIOR HIGH SCHOOL STUDENT OF STI COLLEGE MUNOZ-EDSA
- * Submitted to the Faculty of STI  College Munoz-Edsa
- * In Partial Fulfillment of the Requirements for the Senior High School Information Technology in Mobile App and Web Development
- * 
- * Things needed
- *  - (1) Arduino UNO
- *  - (1) 20x4 LCD w/ I2C
- *  - (1) RFID MFRC522 Reader
- *  - (1) Buzzer
- *  - (1) Green LED
- *  - (1) Red LED
- * 
- * Connections of pins are below
- *
- * LCD I2C:
- * ----------------
- * GND  -  GND
- * VCC  -  5V
- * SDA  -  A4
- * SCL  -  A5
- *
- * RFID MFRC522:
- * ----------------
- * SDA  -  10
- * SCK  -  13
- * MOSI -  11
- * MISO -  12
- * IRQ  -  not connected
- * GND  -  GND
- * RST  -  9
- * 3.3V -  3.3V
- * 
- * Miscellaneous:
- * ----------------
- * Green  - 5
- * Red    - 6
- * Buzzer - 7
- */
-
 #include <OneTapCheck.h>
 
-OneTapCheck otc;
+static OneTapCheck otc;
+static String writeData = "";    
+static boolean doWrite = false;  
 
-String inputString = "";      /* Receiving Input from code */
-bool stringComplete = false;  /* Receiving Input from code */
-
-String writeData = "";    /* Writing data to card */
-boolean doWrite = false;  /* Writing data to card */
-
-
-/**
- * Ran once on startup
- */ 
 void setup() {
   otc.setup();
-  inputString.reserve(200);
 
-  otc.printOnRow(0, " READ WRITE MODE ON ");
-  otc.printOnRow(1, "Current: 02000342102");
-  otc.printOnRow(2, "  New: 02000342102  ");
-  otc.printOnRow(3, "    Writing: OFF    ");
+  otc.print(1, " READ WRITE MODE ON ");
+  otc.print(2, "    Writing: OFF    ");
+
 }
 
-/**
- * Ran continuously by the arduino
- */
 void loop() {
-  /* Input from Serial */
-  if (stringComplete) {
-    processReceivedString(inputString);
-    inputString = "";
-    stringComplete = false;
-  }
-
-  /* RFID code */
   otc.renewKey();
 
   if (!otc.checkForCard()) return;
-  String data = otc.readDataFromCard();
-  otc.printOnRow(1, "Current: " + data);
-
-  otc.playAlert(0);
-  
-  if (doWrite){
-    byte blockData[11];
-    for (int i = 0; i < writeData.length() && i < 11; i++){
-      blockData[i] = writeData.charAt(i); 
-    }
-    otc.writeDataToCard(blockData);
+  if (doWrite) {
+    otc.writeDataToCard(writeData);
     doWrite = false;
-    otc.printOnRow(3, "    Writing: OFF    ");
-  }
+    writeData = "";
+    otc.print(2, "    Writing: OFF    ");
 
-  delay(1500);
+
+    delay(1500);
+  } else {
+    otc.sendMessage(otc.readDataFromCard());
+    otc.playAlert(true);
+    delay(1000);
+    otc.playAlert(false);
+  }
   otc.stopCardCheck();
 }
 
-/**
- * Serial Event method is ran when there is incoming data from code
- * This processes the data into a string, which turns on stringComplete boolean
- * from "[TextHere]" to "TextHere"
- */
 void serialEvent() {
-  while (Serial.available()) {
-    char inChar = (char) Serial.read();
+  const String str = Serial.readString();
 
-    if (inChar == '[') {
-      inputString = ""; 
-    } else if (inChar == ']') {
-      stringComplete = true;
-      break;
-    } else {
-      inputString += inChar;
-    }
-  }
-}
+  /* Assigning data (Must be 36 characters long!) */
+  if (str.startsWith("data ")) {
+    String uuid = str.substring(5, 41);
 
-/**
- * Processes the string received from code.
- * This is where you call methods
- * @param str the string
- */
-void processReceivedString(const String& str) {
-  /* Assigning data (Must be 11 characters long!) */
-  if (str.startsWith("data ")){
-    writeData = str.substring(5);
-
-    if (writeData.length() != 16){
-      otc.sendMessage("Write: Data was not set, length of given string should be 11 characters total.");
+    if (!otc.isUUID(uuid)) {
+      otc.sendMessage("Write: Data was not set. " + uuid); 
       return;
     }
 
+    writeData = uuid;
     otc.sendMessage("Write: Data set to " + writeData);
-    otc.printOnRow(2, "  New: " + writeData + "  ");
   }
   
   /* Activate writing data */
-  else if (str.startsWith("activate")){
-    if (writeData == ""){
-      otc.sendMessage("Write: Data is empty! Assign a value to the data first before you activate writing!");
-      return;
-    }
-    
-    if (doWrite){
-      otc.sendMessage("Write: Writing is already activated! Do \"write cancel\" to cancel writing!");
+  else if (str.startsWith("activate")) {
+    //if (writeData == "") otc.sendMessage("Write: Data is empty! Assign a value to the data first before you activate writing!"); return;
+    if (doWrite) {
+      otc.sendMessage("Write: Writing is already activated! Do \"cancel\" to cancel writing!"); 
       return;
     }
 
     doWrite = true;
     otc.sendMessage("Write: Writing is now activated. The next card detected will be written \"" + writeData + "\"");
-    otc.printOnRow(3, "    Writing: ON    ");
+    otc.print(2, "    Writing: ON    ");
   }
 
   /* Cancel writing data */
-  else if (str.startsWith("cancel")){
-    if (!doWrite){
-      otc.sendMessage("Write: Writing is already turned off! Do \"write activate\" to activate writing!");
-      return;
-    }
+  else if (str.startsWith("cancel")) {
+    if (!doWrite) otc.sendMessage("Write: Writing is already turned off! Do \"activate\" to activate writing!"); return;
 
     doWrite = false;
     otc.sendMessage("Write: Writing is now cancelled.");
-    otc.printOnRow(3, "    Writing: OFF    ");
+    otc.print(2, "    Writing: OFF    ");
   }
 }

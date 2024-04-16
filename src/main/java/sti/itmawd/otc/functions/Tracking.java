@@ -1,56 +1,142 @@
 package sti.itmawd.otc.functions;
 
 import com.fazecast.jSerialComm.SerialPort;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.List;
 
 public class Tracking {
-    private static final HashMap<String, SerialPort> roomArduinos = new HashMap<>();
-    private static final HashMap<String, Boolean> roomAvailability = new HashMap<>();
+    /**
+     * Room Map - For Room UID
+     * Attendance Map - For Attendance UID
+     * Staff Map - For Staff UID
+     * Builder Map - For StringBuilder (Serial connection)
+     */
+    private static final HashMap<@NotNull SerialPort, String> roomMap = new HashMap<>();
+    private static final HashMap<@NotNull SerialPort, String> attendanceMap = new HashMap<>();
+    private static final HashMap<@NotNull SerialPort, String> staffMap = new HashMap<>();
+    private static final HashMap<@NotNull SerialPort, StringBuilder> builderMap = new HashMap<>();
 
     /**
-     * Adds a room to the list of rooms
-     * @param uid The Arduino's uid
-     * @param port The Arduino's port
+     * Adds an Arduino to tracking
+     * @param port the Arduino
      */
-    public static void addRoom(String uid, SerialPort port){
-        roomArduinos.put(uid, port);
-        //roomAvailability.put(uid, false);
+    public static synchronized void addArduino(SerialPort port){
+        roomMap.put(port, "");
+        attendanceMap.put(port, "");
+        staffMap.put(port, "");
+        builderMap.put(port, new StringBuilder());
     }
 
     /**
-     * Removes a room from the list of rooms.
-     * Used in disconnection
-     * @param uid The Arduino's uid
+     * Removes an Arduino from tracking
+     * @param port the Arduino
      */
-    public static void removeRoom(String uid){
-        roomArduinos.remove(uid);
+    public static synchronized void removeArduino(SerialPort port){
+        roomMap.remove(port);
+        attendanceMap.remove(port);
+        staffMap.remove(port);
+        builderMap.remove(port);
     }
 
-    //public static void makeRoomAvailable(String uid){
-    //    if (roomArduinos.containsKey(uid)) return; //Add some error here idk
-    //    roomAvailability.put(uid, true);
-    //}
-
-    //public static void makeRoomUnavailable(String uid){
-    //    if (roomAvailability.containsKey(uid)) return; //Add some error here idk
-    //    roomAvailability.put(uid, false);
-    //}
+    /**
+     * Gets the list of Arduino
+     * @return List of Arduinos
+     */
+    public static synchronized List<SerialPort> getPortList(){
+        return new ArrayList<>(roomMap.keySet());
+    }
 
     /**
-     * Gets the UID of the port given
-     * @param port the arduino port
+     * Gets the UID of an Arduino
+     * @param port the Arduino
      * @return the UID
      */
-    public static String getRoomByPort(SerialPort port){
-        for (Map.Entry<String, SerialPort> entry : roomArduinos.entrySet()){
-            if (entry.getValue() == port){
-                return entry.getKey();
-            }
-        }
+    public static synchronized String getRoom(SerialPort port){
+        return roomMap.get(port);
+    }
 
-        return null;
+    /**
+     * Sets an Arduino's UID
+     * @param port the Arduino
+     * @param uid the UID
+     */
+    public static synchronized void setRoom(SerialPort port, String uid){
+        roomMap.replace(port, uid);
+    }
+
+    /**
+     * Gets the Attendance UID of an Arduino
+     * @param port the Arduino
+     * @return the Attendance UID
+     */
+    public static synchronized String getAttendance(SerialPort port){
+        return attendanceMap.get(port);
+    }
+
+    /**
+     * Sets the Attendance UID of an Arduino
+     * Use clearAttendance if you want to clear. Don't bother with ""
+     * @param port the Arduino
+     * @param uid the UID
+     */
+    public static synchronized void setAttendance(SerialPort port, String uid){
+        attendanceMap.replace(port, uid);
+    }
+
+    /**
+     * Clears the Attendance UID of an Arduino
+     * @param port the Arduino
+     */
+    public static synchronized void clearAttendance(SerialPort port){
+        attendanceMap.replace(port, "");
+    }
+
+    /**
+     * Gets the UID of the staff currently using the Arduino
+     * @param port the Arduino
+     * @return the staff's UID
+     */
+
+    public static synchronized String getStaff(SerialPort port){
+        return staffMap.get(port);
+    }
+
+    /**
+     * Sets the staff that will use an Arduino
+     * Use clearStaff if you want to clear. Don't bother with ""
+     * @param port the Arduino
+     * @param uid the staff's UID
+     */
+    public static synchronized void setStaff(SerialPort port, String uid){
+        staffMap.replace(port, uid);
+    }
+
+    /**
+     * Clears the UID of the staff using the Arduino
+     * @param port the Arduino
+     */
+    public static synchronized void clearStaff(SerialPort port){
+        staffMap.replace(port, "");
+    }
+
+    /**
+     * Checks if there is a staff currently using the Arduino
+     * @param port the Arduino
+     * @return true if there is, false if there isn't
+     */
+    public static boolean isRoomUsed(SerialPort port){
+        return getStaff(port).isEmpty();
+    }
+
+    /**
+     * Gets the StringBuilder of an Arduino (For Serial connection purposes)
+     * @param port the Arduino
+     * @return the mutable StringBuilder
+     */
+    public static synchronized StringBuilder getBuilder(SerialPort port){
+        return builderMap.get(port);
     }
 }
