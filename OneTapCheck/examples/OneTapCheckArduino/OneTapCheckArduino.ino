@@ -1,4 +1,4 @@
-#define SCANNER_ID "sca-akh9p2osd6gfcekv0xfqqf3hzyruxr"
+#define SCANNER_ID "sca-d6q1pobnaox4zzme46j1hdfp3q48w2"
 
 #include <OneTapCheck.h>
 
@@ -78,7 +78,7 @@ void processString(const String& inputString){
     if (command.startsWith("true")){
       hasActivated = true;
       otc.clear();
-      otc.print(1, "Available");
+      otc.print(1, "Room Available");
     } else if (command.startsWith("false")){
       hasActivated = false;
       otc.clear();

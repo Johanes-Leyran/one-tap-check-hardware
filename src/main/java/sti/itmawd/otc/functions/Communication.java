@@ -8,11 +8,7 @@ import org.json.JSONObject;
 import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
-
-import static sti.itmawd.otc.functions.Api.sendTap;
 
 public class Communication {
     enum FromArduino{
@@ -34,47 +30,54 @@ public class Communication {
                 //TODO format: tap nameHere/Failed to Tap./false || tap nameHere/Successful tap/true
                 String userUID = command[1];
 
-                System.out.println(Tracking.isRoomUsed(port));
                 Api.Purpose purpose = Tracking.isRoomUsed(port)?
                         (Tracking.getStaff(port).equals(userUID)? Api.Purpose.END_SESSION : Api.Purpose.ATTEND_SESSION)
                         : Api.Purpose.CREATE_SESSION;
 
                 HttpResponse<String> response = Api.sendTap(port, userUID, purpose);
 
-                System.out.println(response.toString());
                 if (response == null){
                     ToArduino.sendToArduino(port, ToArduino.TAP, "tap  /Connection Issue/false");
+                    return;
+                }
+                System.out.println(response);
+                if (response.statusCode() >= 500){
+                    ToArduino.sendToArduino(port, ToArduino.TAP, response.statusCode() + " /500 ERROR/false");
                     return;
                 }
 
                 JSONObject jsonObject = new JSONObject(response.body());
 
+                if (response.statusCode() >= 400){
+                    ToArduino.sendToArduino(port, ToArduino.TAP, response.statusCode() + "/" + getStringSafe(jsonObject, "Message") + "/false");
+                    return;
+                }
                 if (jsonObject.has("detail")){
                     ToArduino.sendToArduino(port, ToArduino.TAP, " /Contact staff, API/false");
                     return;
                 }
-                if (response.statusCode() >= 400){
-                    ToArduino.sendToArduino(port, ToArduino.TAP, " /Error/false");
-                    return;
-                }
-                if (jsonObject.has("Error")){
-                    ToArduino.sendToArduino(port, ToArduino.TAP, " /" + jsonObject.getString("error") + "/false");
-                    return;
-                }
 
                 if (purpose.equals(Api.Purpose.CREATE_SESSION)){
-                    ToArduino.sendToArduino(port, ToArduino.TAP, jsonObject.getString("Teacher Name") + "/" + jsonObject.getString("Message") + "/true");
-                    ToArduino.sendToArduino(port, ToArduino.LCD, "1 T. " + jsonObject.getString("Teacher Name").substring(0, 18));
-                    Tracking.setAttendance(port, jsonObject.getString("Attendance ID"));
+                    ToArduino.sendToArduino(port, ToArduino.TAP, getStringSafe(jsonObject, "teacher_name") + "/" + getStringSafe(jsonObject, "Message") + "/true");
+                    ToArduino.sendToArduino(port, ToArduino.LCD, "1 T. " + getStringSafe(jsonObject, "teacher_name"));
+
+                    System.out.println(getStringSafe(jsonObject, "attendance_id"));
+                    Tracking.setAttendance(port, getStringSafe(jsonObject, "attendance_id"));
                     Tracking.setStaff(port, userUID);
                 } else if (purpose.equals(Api.Purpose.ATTEND_SESSION)){
-                    ToArduino.sendToArduino(port, ToArduino.TAP, jsonObject.getString("Last Name") + "/" + jsonObject.getString("Message") + "/true");
+                    ToArduino.sendToArduino(port, ToArduino.TAP, getStringSafe(jsonObject, "student_name") + "/" + getStringSafe(jsonObject, "Message") + "/true");
                 } else if (purpose.equals(Api.Purpose.END_SESSION)){
                     Tracking.clearStaff(port);
                     Tracking.clearAttendance(port);
-                    ToArduino.sendToArduino(port, ToArduino.LCD, "1 Available");
+                    ToArduino.sendToArduino(port, ToArduino.TAP, "Tapped out/" + getStringSafe(jsonObject, "Message") + "/true");
+                    ToArduino.sendToArduino(port, ToArduino.LCD, "1 Room Available");
                 }
             }
+        }
+        
+        public static String getStringSafe(JSONObject jsonObject, String key){
+            if (jsonObject.has(key)) return jsonObject.getString(key);
+            else return "null";
         }
     }
 

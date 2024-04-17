@@ -54,7 +54,7 @@ public class Connection implements SerialPortDataListener {
     }
 
     /**
-     * Processes the data from the Arduino and sends it to Communication.process
+     * Processes the data from the Arduino and sends it to Communication.process()
      */
     @Override
     public synchronized void serialEvent(SerialPortEvent e) {
