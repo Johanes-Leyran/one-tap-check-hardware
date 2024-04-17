@@ -1,4 +1,4 @@
-#define ROOM_UID "3a8a001e-9c5e-4396-859a-70e2c6bea64a"
+#define SCANNER_ID "sca-akh9p2osd6gfcekv0xfqqf3hzyruxr"
 
 #include <OneTapCheck.h>
 
@@ -11,7 +11,6 @@ static bool hasActivated = false;
  */ 
 void setup() {
   otc.setup();
-  delay(1000);
 }
 
 /**
@@ -27,14 +26,14 @@ void loop() {
   if (!otc.checkForCard()) return;
   String data = otc.readDataFromCard();
 
-  if (!otc.isUUID(data)) {
+  if (data.length() != 39) {
     //INSTRUCTIONS FOR DISPLAYING NULL/Invalid
     otc.print(3, "Invalid Card!");
     otc.playAlert(false);
     delay(2000);
     otc.clear(3);
   } else {
-    otc.sendMessage("tap " + String(ROOM_UID) + " " + String(data));
+    otc.sendMessage("tap " + String(data));
   }
 
   otc.stopCardCheck();
@@ -96,7 +95,6 @@ void processString(const String& inputString){
     for (char c : inputString.substring(4)) {
       if (c == '/') {
         command[index++] = current;
-        otc.sendMessage(current);
         current = "";
       } else {
         current += c;
@@ -104,7 +102,6 @@ void processString(const String& inputString){
     }
 
     command[index++] = current;
-    otc.sendMessage(current);
 
     otc.clear(2); otc.clear(3);
     otc.print(2, command[0]);
@@ -119,8 +116,7 @@ void processString(const String& inputString){
   }
 
   if (inputString.startsWith("setup")){
-    delay(1000);
-    otc.sendMessage(String("setup ") + ROOM_UID);
+    otc.sendMessage(String("setup ") + SCANNER_ID);
   }
 
   if (inputString.startsWith("time ")){

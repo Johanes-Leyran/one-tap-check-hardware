@@ -21,12 +21,10 @@ public:
 	void renewKey();
 	bool checkForCard();
 	void stopCardCheck();
-	bool isUUID(const String& str);
 	String readDataFromCard();
 	bool writeDataToCard(String data);
 
 	void playAlert(bool success);
-
 
 private:
 	LiquidCrystal_I2C lcd;

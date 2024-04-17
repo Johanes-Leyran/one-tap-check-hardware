@@ -51,7 +51,11 @@ void serialEvent() {
   
   /* Activate writing data */
   else if (str.startsWith("activate")) {
-    //if (writeData == "") otc.sendMessage("Write: Data is empty! Assign a value to the data first before you activate writing!"); return;
+    if (writeData == "") {
+      otc.sendMessage("Write: Data is empty! Assign a value to the data first before you activate writing!"); 
+      return;
+    }
+    
     if (doWrite) {
       otc.sendMessage("Write: Writing is already activated! Do \"cancel\" to cancel writing!"); 
       return;
@@ -64,7 +68,10 @@ void serialEvent() {
 
   /* Cancel writing data */
   else if (str.startsWith("cancel")) {
-    if (!doWrite) otc.sendMessage("Write: Writing is already turned off! Do \"activate\" to activate writing!"); return;
+    if (!doWrite) {
+      otc.sendMessage("Write: Writing is already turned off! Do \"activate\" to activate writing!"); 
+      return;
+    }
 
     doWrite = false;
     otc.sendMessage("Write: Writing is now cancelled.");

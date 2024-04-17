@@ -9,9 +9,6 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
     private static ScheduledExecutorService scheduler;
-    //TODO: Also make tags contain UUID instead of primitive shit lmao
-    //TODO: api
-    //TODO: move api to connection
     public static void main(String[] args) {
         scheduler = Executors.newScheduledThreadPool(2);
         Connection arduinoCon = new Connection();

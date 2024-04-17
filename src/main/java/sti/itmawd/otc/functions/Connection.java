@@ -29,6 +29,8 @@ public class Connection implements SerialPortDataListener {
             }
         }
 
+
+
         //Initializes the newly detected ports
         synchronized (newPorts) {
             if (!newPorts.isEmpty()) {
