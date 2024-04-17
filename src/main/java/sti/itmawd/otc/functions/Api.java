@@ -3,10 +3,13 @@ package sti.itmawd.otc.functions;
 import com.fazecast.jSerialComm.SerialPort;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -17,7 +20,7 @@ public class Api {
         CREATE_SESSION, ATTEND_SESSION, END_SESSION;
     }
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'+08:00");
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'+08:00'");
 
     /**
      * Sends an HttpRequest to OneTapCheck main
@@ -35,16 +38,25 @@ public class Api {
             sendJson.put("purpose", purpose.toString());
             if (purpose.equals(Purpose.ATTEND_SESSION)) sendJson.put("attendance_id", Tracking.getAttendance(port));
 
-            HttpClient httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
+            System.out.println(sendJson.get("device_id"));
+            System.out.println(sendJson.get("tag_id"));
+            System.out.println(sendJson.get("time_in"));
+            System.out.println(sendJson.get("purpose"));
+
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .followRedirects(HttpClient.Redirect.ALWAYS)
+                    .build();
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://leyranmoment.pythonanywhere.com/one_tap_api/attendance/create"))
+                    .uri(URI.create("http://leyranmoment.pythonanywhere.com/one_tap_api/attendance/create/"))
+                    .timeout(Duration.ofSeconds(10))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(sendJson.toString()))
                     .build();
 
             return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e){
+        } catch (IOException | InterruptedException e){
             return null;
         }
     }

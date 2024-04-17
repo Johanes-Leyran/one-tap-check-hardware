@@ -31,14 +31,17 @@ public class Communication {
             }
 
             else if (Objects.equals(command[0], FromArduino.TAP.toString().toLowerCase())){
-                //TODO tap nameHere/Failed to Tap./false || tap nameHere/Successful tap/true
+                //TODO format: tap nameHere/Failed to Tap./false || tap nameHere/Successful tap/true
                 String userUID = command[1];
 
+                System.out.println(Tracking.isRoomUsed(port));
                 Api.Purpose purpose = Tracking.isRoomUsed(port)?
                         (Tracking.getStaff(port).equals(userUID)? Api.Purpose.END_SESSION : Api.Purpose.ATTEND_SESSION)
                         : Api.Purpose.CREATE_SESSION;
 
                 HttpResponse<String> response = Api.sendTap(port, userUID, purpose);
+
+                System.out.println(response.toString());
                 if (response == null){
                     ToArduino.sendToArduino(port, ToArduino.TAP, "tap  /Connection Issue/false");
                     return;
@@ -46,6 +49,14 @@ public class Communication {
 
                 JSONObject jsonObject = new JSONObject(response.body());
 
+                if (jsonObject.has("detail")){
+                    ToArduino.sendToArduino(port, ToArduino.TAP, " /Contact staff, API/false");
+                    return;
+                }
+                if (response.statusCode() >= 400){
+                    ToArduino.sendToArduino(port, ToArduino.TAP, " /Error/false");
+                    return;
+                }
                 if (jsonObject.has("Error")){
                     ToArduino.sendToArduino(port, ToArduino.TAP, " /" + jsonObject.getString("error") + "/false");
                     return;
@@ -64,9 +75,7 @@ public class Communication {
                     ToArduino.sendToArduino(port, ToArduino.LCD, "1 Available");
                 }
             }
-
         }
-
     }
 
     enum ToArduino{

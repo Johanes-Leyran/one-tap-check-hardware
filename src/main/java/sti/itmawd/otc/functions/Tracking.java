@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 public class Tracking {
     /**
@@ -128,7 +129,7 @@ public class Tracking {
      * @return true if there is, false if there isn't
      */
     public static boolean isRoomUsed(SerialPort port){
-        return getStaff(port).isEmpty();
+        return !Objects.equals(getStaff(port), "");
     }
 
     /**
